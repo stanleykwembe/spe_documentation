@@ -1,0 +1,151 @@
+JSON name,Dimension,LLM,Assessment
+json1,Structure & consistency,Gemini,Correct
+json1,Structure & consistency,Claude,Correct
+json1,Structure & consistency,ChatGPT,Correct
+json1,Completeness against the supplied contract,Gemini,N/A
+json1,Completeness against the supplied contract,Claude,N/A
+json1,Completeness against the supplied contract,ChatGPT,N/A
+json1,Spatial information & mapping,Gemini,Correct
+json1,Spatial information & mapping,Claude,Correct
+json1,Spatial information & mapping,ChatGPT,Unclear
+json1,Tracking & temporal consistency,Gemini,Correct
+json1,Tracking & temporal consistency,Claude,Unclear
+json1,Tracking & temporal consistency,ChatGPT,Correct
+json1,Evidence traceability & interpretability,Gemini,Incorrect
+json1,Evidence traceability & interpretability,Claude,Incorrect
+json1,Evidence traceability & interpretability,ChatGPT,Correct
+json2,Structure & consistency,Gemini,Correct
+json2,Structure & consistency,Claude,Correct
+json2,Structure & consistency,ChatGPT,Correct
+json2,Completeness against the supplied contract,Gemini,Correct
+json2,Completeness against the supplied contract,Claude,Correct
+json2,Completeness against the supplied contract,ChatGPT,Correct
+json2,Spatial information & mapping,Gemini,Correct
+json2,Spatial information & mapping,Claude,Unclear
+json2,Spatial information & mapping,ChatGPT,Correct
+json2,Tracking & temporal consistency,Gemini,Correct
+json2,Tracking & temporal consistency,Claude,Correct
+json2,Tracking & temporal consistency,ChatGPT,Unclear
+json2,Evidence traceability & interpretability,Gemini,Incorrect
+json2,Evidence traceability & interpretability,Claude,Incorrect
+json2,Evidence traceability & interpretability,ChatGPT,Correct
+json3,Structure & consistency,Gemini,Incorrect
+json3,Structure & consistency,Claude,Incorrect
+json3,Structure & consistency,ChatGPT,Correct
+json3,Completeness against the supplied contract,Gemini,Correct
+json3,Completeness against the supplied contract,Claude,Correct
+json3,Completeness against the supplied contract,ChatGPT,Incorrect
+json3,Spatial information & mapping,Gemini,Correct
+json3,Spatial information & mapping,Claude,Correct
+json3,Spatial information & mapping,ChatGPT,Correct
+json3,Tracking & temporal consistency,Gemini,Unclear
+json3,Tracking & temporal consistency,Claude,Unclear
+json3,Tracking & temporal consistency,ChatGPT,Correct
+json3,Evidence traceability & interpretability,Gemini,Correct
+json3,Evidence traceability & interpretability,Claude,Correct
+json3,Evidence traceability & interpretability,ChatGPT,Correct
+json4,Structure & consistency,Gemini,Correct
+json4,Structure & consistency,Claude,Correct
+json4,Structure & consistency,ChatGPT,Correct
+json4,Completeness against the supplied contract,Gemini,Unclear
+json4,Completeness against the supplied contract,Claude,Unclear
+json4,Completeness against the supplied contract,ChatGPT,Correct
+json4,Spatial information & mapping,Gemini,Incorrect
+json4,Spatial information & mapping,Claude,Incorrect
+json4,Spatial information & mapping,ChatGPT,Incorrect
+json4,Tracking & temporal consistency,Gemini,Correct
+json4,Tracking & temporal consistency,Claude,Correct
+json4,Tracking & temporal consistency,ChatGPT,Correct
+json4,Evidence traceability & interpretability,Gemini,Correct
+json4,Evidence traceability & interpretability,Claude,Correct
+json4,Evidence traceability & interpretability,ChatGPT,Unclear
+json5,Structure & consistency,Gemini,Correct
+json5,Structure & consistency,Claude,Correct
+json5,Structure & consistency,ChatGPT,Unclear
+json5,Completeness against the supplied contract,Gemini,Correct
+json5,Completeness against the supplied contract,Claude,Correct
+json5,Completeness against the supplied contract,ChatGPT,Correct
+json5,Spatial information & mapping,Gemini,Unclear
+json5,Spatial information & mapping,Claude,Incorrect
+json5,Spatial information & mapping,ChatGPT,Unclear
+json5,Tracking & temporal consistency,Gemini,Incorrect
+json5,Tracking & temporal consistency,Claude,Incorrect
+json5,Tracking & temporal consistency,ChatGPT,Incorrect
+json5,Evidence traceability & interpretability,Gemini,Correct
+json5,Evidence traceability & interpretability,Claude,Correct
+json5,Evidence traceability & interpretability,ChatGPT,Correct
+json6,Structure & consistency,Gemini,Correct
+json6,Structure & consistency,Claude,Correct
+json6,Structure & consistency,ChatGPT,Correct
+json6,Completeness against the supplied contract,Gemini,Incorrect
+json6,Completeness against the supplied contract,Claude,Incorrect
+json6,Completeness against the supplied contract,ChatGPT,Unclear
+json6,Spatial information & mapping,Gemini,Correct
+json6,Spatial information & mapping,Claude,Unclear
+json6,Spatial information & mapping,ChatGPT,Correct
+json6,Tracking & temporal consistency,Gemini,Correct
+json6,Tracking & temporal consistency,Claude,Correct
+json6,Tracking & temporal consistency,ChatGPT,Correct
+json6,Evidence traceability & interpretability,Gemini,Correct
+json6,Evidence traceability & interpretability,Claude,Correct
+json6,Evidence traceability & interpretability,ChatGPT,Correct
+json7,Structure & consistency,Gemini,Incorrect
+json7,Structure & consistency,Claude,Incorrect
+json7,Structure & consistency,ChatGPT,Incorrect
+json7,Completeness against the supplied contract,Gemini,Correct
+json7,Completeness against the supplied contract,Claude,Correct
+json7,Completeness against the supplied contract,ChatGPT,Correct
+json7,Spatial information & mapping,Gemini,Unclear
+json7,Spatial information & mapping,Claude,Correct
+json7,Spatial information & mapping,ChatGPT,Unclear
+json7,Tracking & temporal consistency,Gemini,Correct
+json7,Tracking & temporal consistency,Claude,Correct
+json7,Tracking & temporal consistency,ChatGPT,Incorrect
+json7,Evidence traceability & interpretability,Gemini,Incorrect
+json7,Evidence traceability & interpretability,Claude,Incorrect
+json7,Evidence traceability & interpretability,ChatGPT,Incorrect
+json8,Structure & consistency,Gemini,Correct
+json8,Structure & consistency,Claude,Correct
+json8,Structure & consistency,ChatGPT,Unclear
+json8,Completeness against the supplied contract,Gemini,Correct
+json8,Completeness against the supplied contract,Claude,Correct
+json8,Completeness against the supplied contract,ChatGPT,Correct
+json8,Spatial information & mapping,Gemini,Correct
+json8,Spatial information & mapping,Claude,Correct
+json8,Spatial information & mapping,ChatGPT,Correct
+json8,Tracking & temporal consistency,Gemini,Unclear
+json8,Tracking & temporal consistency,Claude,Incorrect
+json8,Tracking & temporal consistency,ChatGPT,Unclear
+json8,Evidence traceability & interpretability,Gemini,Correct
+json8,Evidence traceability & interpretability,Claude,Correct
+json8,Evidence traceability & interpretability,ChatGPT,Correct
+json9,Structure & consistency,Gemini,Correct
+json9,Structure & consistency,Claude,Correct
+json9,Structure & consistency,ChatGPT,Correct
+json9,Completeness against the supplied contract,Gemini,N/A
+json9,Completeness against the supplied contract,Claude,N/A
+json9,Completeness against the supplied contract,ChatGPT,N/A
+json9,Spatial information & mapping,Gemini,Incorrect
+json9,Spatial information & mapping,Claude,Incorrect
+json9,Spatial information & mapping,ChatGPT,Incorrect
+json9,Tracking & temporal consistency,Gemini,Correct
+json9,Tracking & temporal consistency,Claude,Correct
+json9,Tracking & temporal consistency,ChatGPT,Correct
+json9,Evidence traceability & interpretability,Gemini,Correct
+json9,Evidence traceability & interpretability,Claude,Unclear
+json9,Evidence traceability & interpretability,ChatGPT,Correct
+json10,Structure & consistency,Gemini,Incorrect
+json10,Structure & consistency,Claude,Incorrect
+json10,Structure & consistency,ChatGPT,Incorrect
+json10,Completeness against the supplied contract,Gemini,Correct
+json10,Completeness against the supplied contract,Claude,Correct
+json10,Completeness against the supplied contract,ChatGPT,Correct
+json10,Spatial information & mapping,Gemini,Correct
+json10,Spatial information & mapping,Claude,Unclear
+json10,Spatial information & mapping,ChatGPT,Correct
+json10,Tracking & temporal consistency,Gemini,Correct
+json10,Tracking & temporal consistency,Claude,Correct
+json10,Tracking & temporal consistency,ChatGPT,Incorrect
+json10,Evidence traceability & interpretability,Gemini,Unclear
+json10,Evidence traceability & interpretability,Claude,Unclear
+json10,Evidence traceability & interpretability,ChatGPT,Correct

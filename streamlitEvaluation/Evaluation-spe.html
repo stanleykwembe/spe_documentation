@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Evaluation - Inter-Rater Agreement Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        stPrimary: '#ff4b4b',
+                        stBg: '#0e1117',
+                        stSidebar: '#262730',
+                        stCard: '#1e222b',
+                        stBorder: '#31353f',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0e1117;
+            color: #fafafa;
+        }
+        /* Custom scrollbars like Streamlit */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0e1117;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #31353f;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #ff4b4b;
+        }
+        .st-tab-active {
+            border-bottom: 2px solid #ff4b4b;
+            color: #ff4b4b;
+            font-weight: 600;
+        }
+        .st-metric-box {
+            background-color: #1e222b;
+            border: 1px solid #31353f;
+            border-radius: 0.5rem;
+            padding: 1.25rem;
+            transition: all 0.2s ease;
+        }
+        .st-metric-box:hover {
+            border-color: #4f5666;
+        }
+    </style>
+</head>
+<body class="font-sans antialiased min-h-screen flex flex-col md:flex-row">
+
+    <!-- STREAMLIT SIDEBAR -->
+    <aside class="w-full md:w-80 bg-stSidebar border-r border-stBorder p-6 flex flex-col shrink-0">
+        <!-- Sidebar Brand Header -->
+        <div class="flex items-center space-x-3 pb-6 border-b border-stBorder mb-6">
+            <div class="bg-stPrimary text-white p-2 rounded-lg flex items-center justify-center shadow-lg">
+                <i class="fa-solid font-mono text-xl">S</i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg text-white leading-none">LLM Pairwise Agreement  </h1>
+                <span class="text-xs text-gray-400">Inter-Rater Agreement v1.2</span>
+            </div>
+        </div>
+
+        <!-- Sidebar File Upload Section -->
+        <div class="mb-6">
+            <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
+                <i class="fa-solid fa-cloud-arrow-up mr-1 text-stPrimary"></i> Load Dataset
+            </label>
+            <div class="relative border-2 border-dashed border-stBorder hover:border-stPrimary rounded-lg p-4 text-center cursor-pointer transition bg-stBg/50 group" id="drop-zone">
+                <input type="file" id="csv-upload" accept=".csv" class="hidden">
+                <i class="fa-solid fa-file-csv text-2xl text-gray-400 group-hover:text-stPrimary mb-2 transition"></i>
+                <p class="text-xs text-gray-300 font-medium">Click to upload CSV</p>
+                <p class="text-[10px] text-gray-500 mt-1">Supports schema: JSON name, Dimension, LLM, Assessment</p>
+            </div>
+            <button id="reset-data-btn" class="mt-2 text-xs text-stPrimary hover:underline flex items-center gap-1">
+                <i class="fa-solid fa-rotate-left"></i> Reset Default Dummy Dataset
+            </button>
+        </div>
+
+        <!-- Global Filters -->
+        <div class="space-y-5">
+            <div>
+                <label for="dimension-filter" class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
+                    <i class="fa-solid fa-filter mr-1 text-stPrimary"></i> Select Dimension
+                </label>
+                <select id="dimension-filter" class="w-full bg-stBg border border-stBorder rounded-md py-2 px-3 text-sm text-gray-200 focus:outline-none focus:border-stPrimary">
+                    <option value="ALL">All Dimensions (Combined)</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="rater-pair-select" class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
+                    <i class="fa-solid fa-users-viewfinder mr-1 text-stPrimary"></i> Select Rater Pair
+                </label>
+                <select id="rater-pair-select" class="w-full bg-stBg border border-stBorder rounded-md py-2 px-3 text-sm text-gray-200 focus:outline-none focus:border-stPrimary">
+                    <option value="Gemini vs Claude">Gemini vs Claude</option>
+                    <option value="Gemini vs ChatGPT">Gemini vs ChatGPT</option>
+                    <option value="Claude vs ChatGPT">Claude vs ChatGPT</option>
+                </select>
+            </div>
+
+            <div class="pt-4 border-t border-stBorder">
+                <div class="text-xs font-semibold text-gray-400 mb-2">COHEN'S KAPPA GUIDE</div>
+                <div class="text-[11px] text-gray-400 space-y-1 bg-stBg p-3 rounded border border-stBorder/60">
+                    <p><span class="text-emerald-400 font-medium">> 0.80:</span> Almost Perfect</p>
+                    <p><span class="text-teal-400 font-medium">0.61 - 0.80:</span> Substantial</p>
+                    <p><span class="text-yellow-400 font-medium">0.41 - 0.60:</span> Moderate</p>
+                    <p><span class="text-orange-400 font-medium">0.21 - 0.40:</span> Fair</p>
+                    <p><span class="text-red-400 font-medium">0.00 - 0.20:</span> Slight / Poor</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-auto pt-6 text-xs text-gray-500 border-t border-stBorder">
+            <p>Built for LLM Evaluation Metrics</p>
+            <p class="font-mono text-[10px] mt-1 text-gray-600">CSV Mode: Auto-Detect</p>
+        </div>
+    </aside>
+
+    <!-- MAIN DASHBOARD CONTENT -->
+    <main class="flex-1 min-w-0 p-4 md:p-8 overflow-y-auto space-y-6">
+        
+        <!-- App Title Header -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-stCard p-6 rounded-xl border border-stBorder">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
+                    <i class="fa-solid fa-chart-line text-stPrimary"></i>
+                    LLM Inter-Rater Agreement Analytics
+                </h1>
+                <p class="text-sm text-gray-400 mt-1">
+                    Pairwise consistency, Cohen's Kappa, and multi-rater agreement evaluation across standard dimensions.
+                </p>
+            </div>
+            <div id="active-file-badge" class="self-start md:self-auto px-3 py-1.5 rounded-full bg-stBg border border-stBorder text-xs text-gray-300 font-mono flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span>Dataset: llm_evaluation_dummy_data.csv</span>
+            </div>
+        </div>
+
+        <!-- TOP METRICS CARDS -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Metric 1 -->
+            <div class="st-metric-box">
+                <div class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Total Evaluation Items</div>
+                <div class="text-3xl font-bold text-white font-mono" id="metric-total-items">0</div>
+                <div class="text-xs text-gray-500 mt-1" id="metric-items-sub">Complete 3-way ratings</div>
+            </div>
+            <!-- Metric 2 -->
+            <div class="st-metric-box">
+                <div class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Overall Pairwise Agreement</div>
+                <div class="text-3xl font-bold text-emerald-400 font-mono" id="metric-overall-agree">0.0%</div>
+                <div class="text-xs text-gray-400 mt-1">Average across all pairs</div>
+            </div>
+            <!-- Metric 3 -->
+            <div class="st-metric-box">
+                <div class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Highest Pair Correlation</div>
+                <div class="text-3xl font-bold text-stPrimary font-mono" id="metric-top-pair">Gemini / Claude</div>
+                <div class="text-xs text-emerald-400 mt-1" id="metric-top-kappa">Kappa: 0.00</div>
+            </div>
+            <!-- Metric 4 -->
+            <div class="st-metric-box">
+                <div class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Fleiss' Multi-Rater Kappa</div>
+                <div class="text-3xl font-bold text-indigo-400 font-mono" id="metric-fleiss">0.00</div>
+                <div class="text-xs text-gray-400 mt-1 font-medium" id="metric-fleiss-label">Calculating...</div>
+            </div>
+        </div>
+
+        <!-- NAVIGATION TABS -->
+        <div class="border-b border-stBorder flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium">
+            <button class="st-tab-btn st-tab-active pb-3" data-tab="tab-overview">
+                <i class="fa-solid fa-table-cells mr-2"></i>Pairwise Matrix & Overview
+            </button>
+            <button class="st-tab-btn text-gray-400 hover:text-gray-200 pb-3" data-tab="tab-dimensions">
+                <i class="fa-solid fa-layer-group mr-2"></i>Dimension Breakdown
+            </button>
+            <button class="st-tab-btn text-gray-400 hover:text-gray-200 pb-3" data-tab="tab-confusion">
+                <i class="fa-solid fa-square-poll-vertical mr-2"></i>Confusion Matrix
+            </button>
+            <button class="st-tab-btn text-gray-400 hover:text-gray-200 pb-3" data-tab="tab-data">
+                <i class="fa-solid fa-database mr-2"></i>Data Explorer
+            </button>
+        </div>
+
+        <!-- TAB CONTENT 1: PAIRWISE MATRIX OVERVIEW -->
+        <div id="tab-overview" class="tab-content space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Pairwise Heatmap / Cards -->
+                <div class="lg:col-span-2 bg-stCard border border-stBorder rounded-xl p-6">
+                    <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-grip-lines text-stPrimary"></i> Pairwise Agreement & Cohen's Kappa Summary
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm border-collapse">
+                            <thead>
+                                <tr class="border-b border-stBorder text-xs text-gray-400 uppercase">
+                                    <th class="py-3 px-4">LLM Pair</th>
+                                    <th class="py-3 px-4 text-center">Observed Agreement (%)</th>
+                                    <th class="py-3 px-4 text-center">Expected Agreement (%)</th>
+                                    <th class="py-3 px-4 text-center">Cohen's Kappa (κ)</th>
+                                    <th class="py-3 px-4 text-center">Interpretation</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pairwise-summary-tbody" class="divide-y divide-stBorder/50 font-mono text-xs">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Chart: Agreement Comparison -->
+                <div class="bg-stCard border border-stBorder rounded-xl p-6 flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-lg font-bold text-white mb-2">Agreement vs Chance</h3>
+                        <p class="text-xs text-gray-400 mb-4">Observed match percentage compared with Cohen's Kappa.</p>
+                    </div>
+                    <div class="h-64 relative">
+                        <canvas id="chart-pairwise-bar"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Pair Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="pairwise-cards-container">
+                <!-- Cards generated dynamically -->
+            </div>
+        </div>
+
+        <!-- TAB CONTENT 2: DIMENSION BREAKDOWN -->
+        <div id="tab-dimensions" class="tab-content hidden space-y-6">
+            <div class="bg-stCard border border-stBorder rounded-xl p-6">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-white">Cohen's Kappa Across Evaluation Dimensions</h3>
+                        <p class="text-xs text-gray-400">Identifies which evaluation criteria yield consensus vs disagreement.</p>
+                    </div>
+                </div>
+                <div class="h-80 relative">
+                    <canvas id="chart-dimension-radar"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-stCard border border-stBorder rounded-xl p-6">
+                <h3 class="text-lg font-bold text-white mb-4">Dimension-by-Dimension Metrics Table</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead>
+                            <tr class="border-b border-stBorder text-xs text-gray-400 uppercase font-mono">
+                                <th class="py-3 px-4">Dimension</th>
+                                <th class="py-3 px-4 text-center">Item Count</th>
+                                <th class="py-3 px-4 text-center">Gemini vs Claude (κ)</th>
+                                <th class="py-3 px-4 text-center">Gemini vs ChatGPT (κ)</th>
+                                <th class="py-3 px-4 text-center">Claude vs ChatGPT (κ)</th>
+                                <th class="py-3 px-4 text-center">Mean Dimension Agreement</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dimension-metrics-tbody" class="divide-y divide-stBorder/50 font-mono text-xs">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB CONTENT 3: CONFUSION MATRIX -->
+        <div id="tab-confusion" class="tab-content hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Matrix visual -->
+                <div class="bg-stCard border border-stBorder rounded-xl p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-white">Assessment Cross-Tabulation Matrix</h3>
+                        <span id="confusion-pair-title" class="text-xs font-mono px-3 py-1 bg-stBg rounded border border-stBorder text-stPrimary">
+                            Gemini vs Claude
+                        </span>
+                    </div>
+                    <p class="text-xs text-gray-400 mb-6">
+                        Counts of ratings assigned by Rater 1 (Rows) versus Rater 2 (Columns).
+                    </p>
+
+                    <div class="overflow-x-auto flex justify-center">
+                        <div id="confusion-matrix-grid" class="inline-block">
+                            <!-- Dynamically generated grid -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ratings Distribution Chart -->
+                <div class="bg-stCard border border-stBorder rounded-xl p-6 flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-lg font-bold text-white mb-2">Category Rating Frequencies</h3>
+                        <p class="text-xs text-gray-400 mb-4">Comparison of rating distributions per LLM.</p>
+                    </div>
+                    <div class="h-72 relative">
+                        <canvas id="chart-rating-dist"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB CONTENT 4: DATA EXPLORER -->
+        <div id="tab-data" class="tab-content hidden space-y-6">
+            <div class="bg-stCard border border-stBorder rounded-xl p-6">
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+                    <h3 class="text-lg font-bold text-white">Pivoted Evaluation Dataset</h3>
+                    <div class="flex items-center gap-3">
+                        <input type="text" id="data-search" placeholder="Search JSON / Dimension..." class="bg-stBg border border-stBorder text-xs text-gray-200 px-3 py-2 rounded focus:outline-none focus:border-stPrimary w-48">
+                    </div>
+                </div>
+                <div class="overflow-x-auto max-h-[500px]">
+                    <table class="w-full text-left text-sm">
+                        <thead class="sticky top-0 bg-stSidebar text-xs text-gray-400 uppercase font-mono">
+                            <tr class="border-b border-stBorder">
+                                <th class="py-3 px-4">#</th>
+                                <th class="py-3 px-4">JSON Name</th>
+                                <th class="py-3 px-4">Dimension</th>
+                                <th class="py-3 px-4 text-center">Gemini</th>
+                                <th class="py-3 px-4 text-center">Claude</th>
+                                <th class="py-3 px-4 text-center">ChatGPT</th>
+                                <th class="py-3 px-4 text-center">Agreement Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="raw-data-tbody" class="divide-y divide-stBorder/50 font-mono text-xs">
+                            <!-- Dynamic raw rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- APP SCRIPT LOGIC -->
+    <script>
+        // DEFAULT MOCK DATA REPLICATING USER SCHEMA (json1..json10, 5 dimensions, 3 LLMs)
+        const DEFAULT_DUMMY_DATA = [
+            // Accuracy
+            { "JSON name": "json1", "Dimension": "Accuracy", "LLM": "Gemini", "Assessment": "Correct" },
+            { "JSON name": "json1", "Dimension": "Accuracy", "LLM": "Claude", "Assessment": "Correct" },
+            { "JSON name": "json1", "Dimension": "Accuracy", "LLM": "ChatGPT", "Assessment": "Correct" },
+            { "JSON name": "json2", "Dimension": "Accuracy", "LLM": "Gemini", "Assessment": "Correct" },
+            { "JSON name": "json2", "Dimension": "Accuracy", "LLM": "Claude", "Assessment": "Correct" },
+            { "JSON name": "json2", "Dimension": "Accuracy", "LLM": "ChatGPT", "Assessment": "Incorrect" },
+            { "JSON name": "json3", "Dimension": "Accuracy", "LLM": "Gemini", "Assessment": "Incorrect" },
+            { "JSON name": "json3", "Dimension": "Accuracy", "LLM": "Claude", "Assessment": "Incorrect" },
+            { "JSON name": "json3", "Dimension": "Accuracy", "LLM": "ChatGPT", "Assessment": "Incorrect" },
+            { "JSON name": "json4", "Dimension": "Accuracy", "LLM": "Gemini", "Assessment": "Correct" },
+            { "JSON name": "json4", "Dimension": "Accuracy", "LLM": "Claude", "Assessment": "Correct" },
+            { "JSON name": "json4", "Dimension": "Accuracy", "LLM": "ChatGPT", "Assessment": "Unclear" },
+            { "JSON name": "json5", "Dimension": "Accuracy", "LLM": "Gemini", "Assessment": "Unclear" },
+            { "JSON name": "json5", "Dimension": "Accuracy", "LLM": "Claude", "Assessment": "Unclear" },
+            { "JSON name": "json5", "Dimension": "Accuracy", "LLM": "ChatGPT", "Assessment": "Incorrect" },
+            
+            // Completeness
+            { "JSON name": "json1", "Dimension": "Completeness", "LLM": "Gemini", "Assessment": "Correct" },
+            { "JSON name": "json1", "Dimension": "Completeness", "LLM": "Claude", "Assessment": "Correct" },
+            { "JSON name": "json1", "Dimension": "Completeness", "LLM": "ChatGPT", "Assessment": "Correct" },
+            { "JSON name": "json2", "Dimension": "Completeness", "LLM": "Gemini", "Assessment": "Incorrect" },
+            { "JSON name": "json2", "Dimension": "Completeness", "LLM": "Claude", "Assessment": "Incorrect" },
+            { "JSON name": "json2", "Dimension": "Completeness", "LLM": "ChatGPT", "Assessment": "Correct" },
+            { "JSON name": "json3", "Dimension": "Completeness", "LLM": "Gemini", "Assessment": "Correct" },
+            { "JSON name": "json3", "Dimension": "Completeness", "LLM": "Claude", "Assessment": "Correct" },
+            { "JSON name": "json3", "Dimension": "Completeness", "LLM": "ChatGPT", "Assessment": "Correct" },
+            { "JSON name": "json4", "Dimension": "Completeness", "LLM": "Gemini", "Assessment": "Correct" },
+            { "JSON name": "json4", "Dimension": "Completeness", "LLM": "Claude", "Assessment": "Unclear" },
+            { "JSON name": "json4", "Dimension": "Completeness", "LLM": "ChatGPT", "Assessment": "Unclear" },
+            
+            // Relevance
+            { "JSON name": "json1", "Dimension": "Relevance", "LLM": "Gemini", "Assessment": "Correct" },
+            { "JSON name": "json1", "Dimension": "Relevance", "LLM": "Claude", "Assessment": "Correct" },
+            { "JSON name": "json1", "Dimension": "Relevance", "LLM": "ChatGPT", "Assessment": "Correct" },
+            { "JSON name": "json2", "Dimension": "Relevance", "LLM": "Gemini", "Assessment": "Correct" },
+            { "JSON name": "json2", "Dimension": "Relevance", "LLM": "Claude", "Assessment": "Correct" },
+            { "JSON name": "json2", "Dimension": "Relevance", "LLM": "ChatGPT", "Assessment": "Correct" },
+            { "JSON name": "json3", "Dimension": "Relevance", "LLM": "Gemini", "Assessment": "Unclear" },
+            { "JSON name": "json3", "Dimension": "Relevance", "LLM": "Claude", "Assessment": "Unclear" },
+            { "JSON name": "json3", "Dimension": "Relevance", "LLM": "ChatGPT", "Assessment": "Correct" },
+            { "JSON name": "json4", "Dimension": "Relevance", "LLM": "Gemini", "Assessment": "Incorrect" },
+            { "JSON name": "json4", "Dimension": "Relevance", "LLM": "Claude", "Assessment": "Incorrect" },
+            { "JSON name": "json4", "Dimension": "Relevance", "LLM": "ChatGPT", "Assessment": "Incorrect" },
+
+            // Formatting
+            { "JSON name": "json1", "Dimension": "Formatting", "LLM": "Gemini", "Assessment": "Correct" },
+            { "JSON name": "json1", "Dimension": "Formatting", "LLM": "Claude", "Assessment": "Correct" },
+            { "JSON name": "json1", "Dimension": "Formatting", "LLM": "ChatGPT", "Assessment": "Correct" },
+            { "JSON name": "json2", "Dimension": "Formatting", "LLM": "Gemini", "Assessment": "Correct" },
+            { "JSON name": "json2", "Dimension": "Formatting", "LLM": "Claude", "Assessment": "Correct" },
+            { "JSON name": "json2", "Dimension": "Formatting", "LLM": "ChatGPT", "Assessment": "Unclear" },
+            { "JSON name": "json3", "Dimension": "Formatting", "LLM": "Gemini", "Assessment": "Incorrect" },
+            { "JSON name": "json3", "Dimension": "Formatting", "LLM": "Claude", "Assessment": "Incorrect" },
+            { "JSON name": "json3", "Dimension": "Formatting", "LLM": "ChatGPT", "Assessment": "Incorrect" },
+
+            // Conciseness
+            { "JSON name": "json1", "Dimension": "Conciseness", "LLM": "Gemini", "Assessment": "Correct" },
+            { "JSON name": "json1", "Dimension": "Conciseness", "LLM": "Claude", "Assessment": "Correct" },
+            { "JSON name": "json1", "Dimension": "Conciseness", "LLM": "ChatGPT", "Assessment": "Incorrect" },
+            { "JSON name": "json2", "Dimension": "Conciseness", "LLM": "Gemini", "Assessment": "Incorrect" },
+            { "JSON name": "json2", "Dimension": "Conciseness", "LLM": "Claude", "Assessment": "Incorrect" },
+            { "JSON name": "json2", "Dimension": "Conciseness", "LLM": "ChatGPT", "Assessment": "Unclear" },
+            { "JSON name": "json3", "Dimension": "Conciseness", "LLM": "Gemini", "Assessment": "Correct" },
+            { "JSON name": "json3", "Dimension": "Conciseness", "LLM": "Claude", "Assessment": "Correct" },
+            { "JSON name": "json3", "Dimension": "Conciseness", "LLM": "ChatGPT", "Assessment": "Correct" }
+        ];
+
+        // Global State
+        let rawData = [...DEFAULT_DUMMY_DATA];
+        let pivotedData = [];
+        let categories = ["Correct", "Incorrect", "Unclear"];
+        let chartPairwiseBar = null;
+        let chartDimensionRadar = null;
+        let chartRatingDist = null;
+
+        // Initialize App
+        window.onload = function() {
+            initApp();
+        };
+
+        function initApp() {
+            processRawData();
+            setupEventListeners();
+            populateDimensionFilter();
+            updateDashboard();
+        }
+
+        // Pivots long format dataset into wide format per item
+        function processRawData() {
+            const map = {};
+            rawData.forEach(row => {
+                const key = `${row['JSON name']}___${row['Dimension']}`;
+                if (!map[key]) {
+                    map[key] = {
+                        json: row['JSON name'],
+                        dimension: row['Dimension'],
+                        ratings: {}
+                    };
+                }
+                map[key].ratings[row['LLM']] = row['Assessment'];
+            });
+
+            // Convert map to array & filter items with complete ratings from all 3 standard models
+            pivotedData = Object.values(map).filter(item => 
+                item.ratings['Gemini'] && item.ratings['Claude'] && item.ratings['ChatGPT']
+            );
+        }
+
+        function setupEventListeners() {
+            // Tab Switching
+            document.querySelectorAll('.st-tab-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.st-tab-btn').forEach(b => {
+                        b.classList.remove('st-tab-active');
+                        b.classList.add('text-gray-400');
+                    });
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+
+                    const targetTab = btn.getAttribute('data-tab');
+                    btn.classList.add('st-tab-active');
+                    btn.classList.remove('text-gray-400');
+                    document.getElementById(targetTab).classList.remove('hidden');
+                    requestAnimationFrame(() => {
+                        [chartPairwiseBar, chartDimensionRadar, chartRatingDist]
+                            .filter(Boolean)
+                            .forEach(chart => chart.resize());
+                    });
+                });
+            });
+
+            // Filters
+            document.getElementById('dimension-filter').addEventListener('change', updateDashboard);
+            document.getElementById('rater-pair-select').addEventListener('change', updateDashboard);
+            document.getElementById('data-search').addEventListener('input', renderDataExplorer);
+
+            // File Upload
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('csv-upload');
+
+            dropZone.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', handleFileUpload);
+            
+            document.getElementById('reset-data-btn').addEventListener('click', () => {
+                rawData = [...DEFAULT_DUMMY_DATA];
+                document.getElementById('active-file-badge').innerText = 'Dataset: llm_evaluation_dummy_data.csv';
+                processRawData();
+                populateDimensionFilter();
+                updateDashboard();
+            });
+        }
+
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const csvText = event.target.result;
+                const parsed = parseCSV(csvText);
+                if (parsed.length > 0) {
+                    rawData = parsed;
+                    document.getElementById('active-file-badge').innerText = `Dataset: ${file.name}`;
+                    processRawData();
+                    populateDimensionFilter();
+                    updateDashboard();
+                } else {
+                    alert("Invalid CSV format or structure.");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Simple CSV Parser
+        function parseCSV(text) {
+            const lines = text.trim().split('\n');
+            if (lines.length < 2) return [];
+            const headers = lines[0].split(',').map(h => h.trim().replace(/^"(.*)"$/, '$1'));
+            
+            const result = [];
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                const values = lines[i].split(',').map(v => v.trim().replace(/^"(.*)"$/, '$1'));
+                const obj = {};
+                headers.forEach((h, idx) => {
+                    obj[h] = values[idx] || '';
+                });
+                if (obj['JSON name'] && obj['Dimension'] && obj['LLM'] && obj['Assessment']) {
+                    result.push(obj);
+                }
+            }
+            return result;
+        }
+
+        function populateDimensionFilter() {
+            const select = document.getElementById('dimension-filter');
+            const currentVal = select.value;
+            const dims = Array.from(new Set(pivotedData.map(d => d.dimension))).sort();
+            
+            select.innerHTML = '<option value="ALL">All Dimensions (Combined)</option>';
+            dims.forEach(dim => {
+                const opt = document.createElement('option');
+                opt.value = dim;
+                opt.textContent = dim;
+                select.appendChild(opt);
+            });
+
+            if (dims.includes(currentVal)) {
+                select.value = currentVal;
+            } else {
+                select.value = 'ALL';
+            }
+        }
+
+        // --- STATISTICAL CALCULATIONS ---
+
+        function calculatePairwiseStats(dataSubset, modelA, modelB) {
+            if (dataSubset.length === 0) return { observed: 0, expected: 0, kappa: 0, N: 0 };
+
+            let total = dataSubset.length;
+            let matches = 0;
+
+            const countsA = { "Correct": 0, "Incorrect": 0, "Unclear": 0 };
+            const countsB = { "Correct": 0, "Incorrect": 0, "Unclear": 0 };
+
+            dataSubset.forEach(item => {
+                const rA = item.ratings[modelA];
+                const rB = item.ratings[modelB];
+                if (rA === rB) matches++;
+                if (countsA[rA] !== undefined) countsA[rA]++;
+                if (countsB[rB] !== undefined) countsB[rB]++;
+            });
+
+            const observed = matches / total;
+
+            // Expected agreement by chance (Pe)
+            let pe = 0;
+            categories.forEach(cat => {
+                const pA = (countsA[cat] || 0) / total;
+                const pB = (countsB[cat] || 0) / total;
+                pe += (pA * pB);
+            });
+
+            let kappa = 0;
+            if (pe < 1) {
+                kappa = (observed - pe) / (1 - pe);
+            }
+
+            return {
+                observed: observed,
+                expected: pe,
+                kappa: isNaN(kappa) ? 0 : kappa,
+                N: total
+            };
+        }
+
+        function calculateFleissKappa(dataSubset) {
+            if (dataSubset.length === 0) return 0;
+            const N = dataSubset.length;
+            const k = 3; // 3 ratings per subject (Gemini, Claude, ChatGPT)
+            const raters = ['Gemini', 'Claude', 'ChatGPT'];
+
+            let sumP_i = 0;
+            const catCounts = { "Correct": 0, "Incorrect": 0, "Unclear": 0 };
+
+            dataSubset.forEach(item => {
+                const counts = { "Correct": 0, "Incorrect": 0, "Unclear": 0 };
+                raters.forEach(r => {
+                    const val = item.ratings[r];
+                    if (counts[val] !== undefined) counts[val]++;
+                    if (catCounts[val] !== undefined) catCounts[val]++;
+                });
+
+                let sumSquare = 0;
+                categories.forEach(c => {
+                    sumSquare += counts[c] * counts[c];
+                });
+
+                const P_i = (sumSquare - k) / (k * (k - 1));
+                sumP_i += P_i;
+            });
+
+            const P_bar = sumP_i / N;
+
+            // Compute P_e (expected)
+            let P_e = 0;
+            const totalRatings = N * k;
+            categories.forEach(c => {
+                const p_j = catCounts[c] / totalRatings;
+                P_e += (p_j * p_j);
+            });
+
+            if (P_e === 1) return 1;
+            const fleiss = (P_bar - P_e) / (1 - P_e);
+            return isNaN(fleiss) ? 0 : fleiss;
+        }
+
+        function getKappaInterpretation(k) {
+            if (k > 0.8) return { text: "Almost Perfect", class: "text-emerald-400" };
+            if (k > 0.6) return { text: "Substantial", class: "text-teal-400" };
+            if (k > 0.4) return { text: "Moderate", class: "text-yellow-400" };
+            if (k > 0.2) return { text: "Fair", class: "text-orange-400" };
+            if (k > 0) return { text: "Slight", class: "text-red-400" };
+            return { text: "Poor", class: "text-red-500" };
+        }
+
+        // --- DASHBOARD UPDATE PIPELINE ---
+
+        function updateDashboard() {
+            const selectedDim = document.getElementById('dimension-filter').value;
+            const selectedPair = document.getElementById('rater-pair-select').value;
+
+            const filteredData = selectedDim === 'ALL' 
+                ? pivotedData 
+                : pivotedData.filter(d => d.dimension === selectedDim);
+
+            // Compute Pairwise Stats
+            const pair1 = calculatePairwiseStats(filteredData, 'Gemini', 'Claude');
+            const pair2 = calculatePairwiseStats(filteredData, 'Gemini', 'ChatGPT');
+            const pair3 = calculatePairwiseStats(filteredData, 'Claude', 'ChatGPT');
+
+            const pairStats = {
+                'Gemini vs Claude': pair1,
+                'Gemini vs ChatGPT': pair2,
+                'Claude vs ChatGPT': pair3
+            };
+
+            const fleiss = calculateFleissKappa(filteredData);
+
+            // 1. Render Top Metrics Cards
+            renderTopMetrics(filteredData.length, pairStats, fleiss);
+
+            // 2. Render Pairwise Summary Table & Cards
+            renderPairwiseSummary(pairStats);
+
+            // 3. Render Pairwise Bar Chart
+            renderPairwiseChart(pairStats);
+
+            // 4. Render Dimension Radar & Table
+            renderDimensionAnalysis();
+
+            // 5. Render Confusion Matrix & Rating Dist
+            renderConfusionMatrix(filteredData, selectedPair);
+
+            // 6. Render Data Explorer
+            renderDataExplorer();
+        }
+
+        function renderTopMetrics(totalItems, pairStats, fleiss) {
+            document.getElementById('metric-total-items').innerText = totalItems;
+            
+            const avgObserved = (pairStats['Gemini vs Claude'].observed + pairStats['Gemini vs ChatGPT'].observed + pairStats['Claude vs ChatGPT'].observed) / 3 * 100;
+            document.getElementById('metric-overall-agree').innerText = `${avgObserved.toFixed(1)}%`;
+
+            // Find top pair by Kappa
+            let topPair = 'Gemini vs Claude';
+            let maxK = -1;
+            Object.entries(pairStats).forEach(([name, stats]) => {
+                if (stats.kappa > maxK) {
+                    maxK = stats.kappa;
+                    topPair = name;
+                }
+            });
+
+            document.getElementById('metric-top-pair').innerText = topPair;
+            document.getElementById('metric-top-kappa').innerText = `Kappa: ${maxK.toFixed(2)}`;
+
+            document.getElementById('metric-fleiss').innerText = fleiss.toFixed(2);
+            const fleissInterp = getKappaInterpretation(fleiss);
+            const fleissLabel = document.getElementById('metric-fleiss-label');
+            fleissLabel.innerText = fleissInterp.text;
+            fleissLabel.className = `text-xs mt-1 font-medium ${fleissInterp.class}`;
+        }
+
+        function renderPairwiseSummary(pairStats) {
+            const tbody = document.getElementById('pairwise-summary-tbody');
+            tbody.innerHTML = '';
+
+            const cardsContainer = document.getElementById('pairwise-cards-container');
+            cardsContainer.innerHTML = '';
+
+            Object.entries(pairStats).forEach(([pairName, stats]) => {
+                const interp = getKappaInterpretation(stats.kappa);
+                
+                // Table Row
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-stCard/60 transition";
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-semibold text-white">${pairName}</td>
+                    <td class="py-3 px-4 text-center text-emerald-400">${(stats.observed * 100).toFixed(1)}%</td>
+                    <td class="py-3 px-4 text-center text-gray-400">${(stats.expected * 100).toFixed(1)}%</td>
+                    <td class="py-3 px-4 text-center font-bold text-stPrimary">${stats.kappa.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-stBg border border-stBorder ${interp.class}">${interp.text}</span></td>
+                `;
+                tbody.appendChild(tr);
+
+                // Card
+                const card = document.createElement('div');
+                card.className = "bg-stCard border border-stBorder p-4 rounded-xl flex flex-col justify-between";
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-semibold text-gray-300">${pairName}</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded bg-stBg border border-stBorder ${interp.class}">${interp.text}</span>
+                        </div>
+                        <div class="text-2xl font-bold font-mono text-white mb-1">${(stats.observed * 100).toFixed(1)}% <span class="text-xs text-gray-400 font-normal">Agreement</span></div>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-stBorder/60 flex justify-between text-xs text-gray-400">
+                        <span>Cohen's Kappa: <strong class="text-white">${stats.kappa.toFixed(2)}</strong></span>
+                        <span>Sample N: <strong class="text-white">${stats.N}</strong></span>
+                    </div>
+                `;
+                cardsContainer.appendChild(card);
+            });
+        }
+
+        function renderPairwiseChart(pairStats) {
+            const ctx = document.getElementById('chart-pairwise-bar').getContext('2d');
+            const labels = Object.keys(pairStats);
+            const observedData = labels.map(l => (pairStats[l].observed * 100).toFixed(1));
+            const kappaData = labels.map(l => (pairStats[l].kappa).toFixed(2));
+
+            if (chartPairwiseBar) chartPairwiseBar.destroy();
+
+            chartPairwiseBar = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Observed Agreement (%)',
+                            data: observedData,
+                            backgroundColor: '#10b981',
+                            borderRadius: 6,
+                        },
+                        {
+                            label: 'Cohen Kappa (κ)',
+                            data: kappaData,
+                            backgroundColor: '#ff4b4b',
+                            borderRadius: 6,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#9ca3af', font: { family: 'Inter', size: 11 } } }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#9ca3af' }, grid: { color: '#31353f' } },
+                        y: { 
+                            ticks: { color: '#9ca3af' }, 
+                            grid: { color: '#31353f' },
+                            title: { display: true, text: 'Agreement %', color: '#9ca3af' },
+                            max: 100
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            min: 0,
+                            max: 1.0,
+                            ticks: { color: '#ff4b4b' },
+                            grid: { drawOnChartArea: false },
+                            title: { display: true, text: 'Kappa Score', color: '#ff4b4b' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderDimensionAnalysis() {
+            const dims = Array.from(new Set(pivotedData.map(d => d.dimension))).sort();
+            const dimTableBody = document.getElementById('dimension-metrics-tbody');
+            dimTableBody.innerHTML = '';
+
+            const radarLabels = dims;
+            const geminiClaudeKappas = [];
+            const geminiChatGPTKappas = [];
+            const claudeChatGPTKappas = [];
+
+            dims.forEach(dim => {
+                const subData = pivotedData.filter(d => d.dimension === dim);
+                const s1 = calculatePairwiseStats(subData, 'Gemini', 'Claude');
+                const s2 = calculatePairwiseStats(subData, 'Gemini', 'ChatGPT');
+                const s3 = calculatePairwiseStats(subData, 'Claude', 'ChatGPT');
+
+                geminiClaudeKappas.push(s1.kappa.toFixed(2));
+                geminiChatGPTKappas.push(s2.kappa.toFixed(2));
+                claudeChatGPTKappas.push(s3.kappa.toFixed(2));
+
+                const meanAgree = ((s1.observed + s2.observed + s3.observed) / 3 * 100).toFixed(1);
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-stCard/60 transition";
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-semibold text-white">${dim}</td>
+                    <td class="py-3 px-4 text-center text-gray-300">${subData.length}</td>
+                    <td class="py-3 px-4 text-center text-emerald-400 font-bold">${s1.kappa.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-center text-teal-400 font-bold">${s2.kappa.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-center text-yellow-400 font-bold">${s3.kappa.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-center text-stPrimary font-bold">${meanAgree}%</td>
+                `;
+                dimTableBody.appendChild(tr);
+            });
+
+            // Radar Chart
+            const ctx = document.getElementById('chart-dimension-radar').getContext('2d');
+            if (chartDimensionRadar) chartDimensionRadar.destroy();
+
+            chartDimensionRadar = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: radarLabels,
+                    datasets: [
+                        {
+                            label: 'Gemini vs Claude (κ)',
+                            data: geminiClaudeKappas,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                        },
+                        {
+                            label: 'Gemini vs ChatGPT (κ)',
+                            data: geminiChatGPTKappas,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        },
+                        {
+                            label: 'Claude vs ChatGPT (κ)',
+                            data: claudeChatGPTKappas,
+                            borderColor: '#ff4b4b',
+                            backgroundColor: 'rgba(255, 75, 75, 0.2)',
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: '#31353f' },
+                            grid: { color: '#31353f' },
+                            pointLabels: { color: '#fafafa', font: { family: 'Inter', size: 12 } },
+                            ticks: { color: '#9ca3af', backdropColor: 'transparent' },
+                            min: 0,
+                            max: 1.0
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#9ca3af', font: { family: 'Inter' } } }
+                    }
+                }
+            });
+        }
+
+        function renderConfusionMatrix(dataSubset, pairName) {
+            document.getElementById('confusion-pair-title').innerText = pairName;
+
+            let modelA = 'Gemini', modelB = 'Claude';
+            if (pairName === 'Gemini vs ChatGPT') { modelA = 'Gemini'; modelB = 'ChatGPT'; }
+            if (pairName === 'Claude vs ChatGPT') { modelA = 'Claude'; modelB = 'ChatGPT'; }
+
+            // Build Matrix
+            const matrix = {
+                "Correct": { "Correct": 0, "Incorrect": 0, "Unclear": 0 },
+                "Incorrect": { "Correct": 0, "Incorrect": 0, "Unclear": 0 },
+                "Unclear": { "Correct": 0, "Incorrect": 0, "Unclear": 0 }
+            };
+
+            dataSubset.forEach(item => {
+                const rA = item.ratings[modelA];
+                const rB = item.ratings[modelB];
+                if (matrix[rA] && matrix[rA][rB] !== undefined) {
+                    matrix[rA][rB]++;
+                }
+            });
+
+            const gridContainer = document.getElementById('confusion-matrix-grid');
+            gridContainer.innerHTML = '';
+
+            // Table Matrix UI
+            let html = `
+                <div class="text-center font-mono text-xs text-gray-400 mb-2 font-bold">${modelB} (Columns) →</div>
+                <table class="border-collapse font-mono text-xs text-center">
+                    <thead>
+                        <tr>
+                            <th class="p-2 border border-stBorder bg-stSidebar text-gray-400 font-normal">Rater ${modelA} ↓</th>
+                            ${categories.map(c => `<th class="p-3 border border-stBorder bg-stSidebar text-gray-200 font-bold">${c}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            categories.forEach(rowCat => {
+                html += `<tr><td class="p-3 border border-stBorder bg-stSidebar text-gray-200 font-bold">${rowCat}</td>`;
+                categories.forEach(colCat => {
+                    const count = matrix[rowCat][colCat];
+                    const isDiagonal = rowCat === colCat;
+                    const bgClass = isDiagonal 
+                        ? (count > 0 ? 'bg-emerald-950/80 text-emerald-300 font-bold border-emerald-800' : 'bg-stBg text-gray-500') 
+                        : (count > 0 ? 'bg-stPrimary/20 text-stPrimary font-semibold' : 'bg-stBg text-gray-500');
+
+                    html += `<td class="p-4 border border-stBorder ${bgClass} text-sm">${count}</td>`;
+                });
+                html += `</tr>`;
+            });
+
+            html += `</tbody></table>`;
+            gridContainer.innerHTML = html;
+
+            // Render Ratings Distribution Bar Chart
+            const ctxDist = document.getElementById('chart-rating-dist').getContext('2d');
+            if (chartRatingDist) chartRatingDist.destroy();
+
+            const counts = {
+                Gemini: { "Correct": 0, "Incorrect": 0, "Unclear": 0 },
+                Claude: { "Correct": 0, "Incorrect": 0, "Unclear": 0 },
+                ChatGPT: { "Correct": 0, "Incorrect": 0, "Unclear": 0 }
+            };
+
+            dataSubset.forEach(item => {
+                ['Gemini', 'Claude', 'ChatGPT'].forEach(llm => {
+                    const r = item.ratings[llm];
+                    if (counts[llm][r] !== undefined) counts[llm][r]++;
+                });
+            });
+
+            chartRatingDist = new Chart(ctxDist, {
+                type: 'bar',
+                data: {
+                    labels: ['Gemini', 'Claude', 'ChatGPT'],
+                    datasets: [
+                        {
+                            label: 'Correct',
+                            data: [counts.Gemini.Correct, counts.Claude.Correct, counts.ChatGPT.Correct],
+                            backgroundColor: '#10b981'
+                        },
+                        {
+                            label: 'Incorrect',
+                            data: [counts.Gemini.Incorrect, counts.Claude.Incorrect, counts.ChatGPT.Incorrect],
+                            backgroundColor: '#ef4444'
+                        },
+                        {
+                            label: 'Unclear',
+                            data: [counts.Gemini.Unclear, counts.Claude.Unclear, counts.ChatGPT.Unclear],
+                            backgroundColor: '#f59e0b'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#9ca3af', font: { family: 'Inter' } } }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#9ca3af' }, grid: { color: '#31353f' } },
+                        y: { ticks: { color: '#9ca3af' }, grid: { color: '#31353f' } }
+                    }
+                }
+            });
+        }
+
+        function renderDataExplorer() {
+            const tbody = document.getElementById('raw-data-tbody');
+            const searchVal = document.getElementById('data-search').value.toLowerCase();
+            tbody.innerHTML = '';
+
+            const filtered = pivotedData.filter(d => 
+                d.json.toLowerCase().includes(searchVal) || 
+                d.dimension.toLowerCase().includes(searchVal)
+            );
+
+            filtered.forEach((row, idx) => {
+                const g = row.ratings['Gemini'];
+                const c = row.ratings['Claude'];
+                const gpt = row.ratings['ChatGPT'];
+
+                const allAgree = (g === c) && (c === gpt);
+                const partialAgree = (g === c) || (g === gpt) || (c === gpt);
+
+                const statusBadge = allAgree 
+                    ? `<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800">Full Consensus</span>`
+                    : (partialAgree 
+                        ? `<span class="px-2 py-0.5 rounded text-[10px] bg-yellow-950 text-yellow-400 border border-yellow-800">Partial Match</span>`
+                        : `<span class="px-2 py-0.5 rounded text-[10px] bg-red-950 text-red-400 border border-red-800">Disagreement</span>`);
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-stCard/60 transition";
+                tr.innerHTML = `
+                    <td class="py-2.5 px-4 text-gray-500">${idx + 1}</td>
+                    <td class="py-2.5 px-4 font-semibold text-white">${row.json}</td>
+                    <td class="py-2.5 px-4 text-gray-300">${row.dimension}</td>
+                    <td class="py-2.5 px-4 text-center ${getCategoryColor(g)}">${g}</td>
+                    <td class="py-2.5 px-4 text-center ${getCategoryColor(c)}">${c}</td>
+                    <td class="py-2.5 px-4 text-center ${getCategoryColor(gpt)}">${gpt}</td>
+                    <td class="py-2.5 px-4 text-center">${statusBadge}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function getCategoryColor(val) {
+            if (val === 'Correct') return 'text-emerald-400 font-medium';
+            if (val === 'Incorrect') return 'text-red-400 font-medium';
+            if (val === 'Unclear') return 'text-amber-400 font-medium';
+            return 'text-gray-400';
+        }
+    </script>
+</body>
+</html>
